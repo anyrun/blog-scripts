@@ -62,7 +62,7 @@ class GuDeobfuscator:
         Disassembles the block of code starting at the provided address.
         Returns a BlockModel object containing information about the disassembled block.
         """
-        if not self.isUndefined(address):
+        if self.isUndefined(address):
             return None
 
         pseudo_dism = Disassembler.getDisassembler(self.program, self.monitor, None)
