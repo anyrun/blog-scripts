@@ -1,5 +1,20 @@
-message = "" #Enter encrypted data from the network traffic
-custom_alphabet = "" #Enter custom alphabet from strings  Default: zLAxuU0kQKf3sWE7ePRO2imyg9GSpVoYC6rhlX48ZHnvjJDBNFtMd1I5acwbqT+=
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Example of an encrypted message
+message = "g2JXedWrPu6X9mUUR0W0eIiA9mU6gmiA9mKr9mP0Rd9N9UH5GITD9U11S4TZuXH5G06D9U11S4TZ9iH5GLJD9U65S4TnuUH5G0cD9UNAS4TZ9iH5G06D9UFtS4TH9XH5Q4qr9icFSRseEF9Fp0HN9PgbQC" 
+# Custom Base64 alphabet 
+custom_alphabet = "zLAxuU0kQKf3sWE7ePRO2imyg9GSpVoYC6rhlX48ZHnvjJDBNFtMd1I5acwbqT+=" 
 
 def base64_decode_custom(encoded_text):
     decoded_text = ""
