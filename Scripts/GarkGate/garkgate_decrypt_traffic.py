@@ -1,5 +1,7 @@
-message = "" #Enter encrypted data from the network traffic
-custom_alphabet = "" #Enter custom alphabet from strings  Default: zLAxuU0kQKf3sWE7ePRO2imyg9GSpVoYC6rhlX48ZHnvjJDBNFtMd1I5acwbqT+=
+# Example of an encrypted message
+message = "g2JXedWrPu6X9mUUR0W0eIiA9mU6gmiA9mKr9mP0Rd9N9UH5GITD9U11S4TZuXH5G06D9U11S4TZ9iH5GLJD9U65S4TnuUH5G0cD9UNAS4TZ9iH5G06D9UFtS4TH9XH5Q4qr9icFSRseEF9Fp0HN9PgbQC" 
+# Custom Base64 alphabet 
+custom_alphabet = "zLAxuU0kQKf3sWE7ePRO2imyg9GSpVoYC6rhlX48ZHnvjJDBNFtMd1I5acwbqT+=" 
 
 def base64_decode_custom(encoded_text):
     decoded_text = ""
