@@ -25,7 +25,7 @@
 #		http_429_handling - strategy of "Too Many Requests" error handling, available values: wait, stop; default - wait
 
 
-import sys, requests, os, json
+import argparse, requests, os, json
 from time import sleep
 from datetime import datetime, timedelta
 
@@ -35,35 +35,31 @@ def make_request(token, message_id, dst):
 
 
 def main():
-	if len(sys.argv) < 3:
-		print("Usage:", sys.argv[0], "<telegram_bot_token> <chat_id>\n\t[<start_message_id>=1] [<end_message_id>=-1] [<sleep_time_seconds>=3] [<responses_directory>=responses] [<http_429_handling>:{wait,stop}=wait]")
-		return
+	parser = argparse.ArgumentParser(description="This script will delete messages one by one")
+	parser.add_argument("telegram_bot_token")
+	parser.add_argument("chat_id", help="ID of the chat, from which messages will be deleted")
+	parser.add_argument("--start_message_id", "--start", "-s", default=1, type=int, help="ID of first message to delete")
+	parser.add_argument("--end_message_id", "--end", "-e", default=-1, type=int, help="ID of last message to delete")
+	parser.add_argument("--sleep_time_seconds", "--sleep", "-t", default=3, type=float, help="delay between requests to Telegram API")
+	parser.add_argument("--responses_directory", "--responses", "-o", default="responses", help="the location where server responses will be stored as separate JSON files")
+	parser.add_argument("--http_429_handling", "--handle", default="wait", choices=["wait", "stop"], help="strategy of \"Too Many Requests\" error handling")
+	
+	args = parser.parse_args()
 
-	token = sys.argv[1]
-	if token.startswith("bot"):
-		token = token[3:]
+	token = args.telegram_bot_token.removeprefix("bot")
+	chat_id = args.chat_id
+	current_message_id = args.start_message_id
+	end_message_id = args.end_message_id
+	responses_dir = args.responses_directory
+	sleep_time = args.sleep_time_seconds
+	http_429_handling = args.http_429_handling
 
-	chat_id = sys.argv[2]
+	if end_message_id != -1:
+		def check_id(id): return current_message_id <= end_message_id
+	else:
+		def check_id(id): return True
 
-	other_settings = {
-		"start_message_id": 1,
-		"end_message_id": -1,
-		"sleep_time_seconds": 3,
-		"responses_directory": "responses",
-		"http_429_handling": "wait"
-	}
-
-	if len(sys.argv) > 3:
-		other_settings.update(dict(zip(["start_message_id", "end_message_id", "sleep_time_seconds","responses_directory", "http_429_handling"], sys.argv[3:])))
-
-	current_message_id = int(other_settings["start_message_id"])
-	end_message_id = int(other_settings["end_message_id"])
-	check_lambda = (lambda id: current_message_id <= end_message_id) if end_message_id != -1 else (lambda id: True)
-	responses_dir = os.path.abspath(other_settings["responses_directory"])
-	sleep_time = int(other_settings["sleep_time_seconds"])
-	http_429_handling = other_settings["http_429_handling"]
-	if not http_429_handling in ["wait", "stop"]:
-		http_429_handling = "stop"
+	
 
 	if not os.path.exists(responses_dir):
 		os.mkdir(responses_dir)
@@ -78,7 +74,7 @@ def main():
 	print(f"\tResponses directory: {responses_dir}")
 	print(f"\tHTTP 429 code handling: {http_429_handling}")
 
-	while check_lambda(current_message_id):
+	while check_id(current_message_id):
 		print()
 		t = datetime.now()
 		print(f"[{t}] Deleting message with id [{current_message_id}]")
@@ -86,33 +82,41 @@ def main():
 		with open(os.path.join(responses_dir, f"delete_message_{chat_id}_{current_message_id}.json"), "w") as f:
 			json.dump(response, f)
 
+		
+		t = datetime.now()
+		message = f"[{t}] Message has been deleted successfully"
+		wait = sleep_time
 		if not response["ok"]:
 			error_code = response["error_code"]
-			t = datetime.now()
+			handled = False
+
 			if error_code == 429:
 				if http_429_handling == "wait":
 					retry_after = response["parameters"]["retry_after"]
 					end_t = t + timedelta(seconds=retry_after)
-					print(f"[{t}] HTTP 429, waiting for [{end_t}] ({retry_after} seconds)...")
-					sleep(retry_after)
-					continue
-				print(f"[{t}] HTTP 429, break")
-			elif error_code == 400 and response["description"] == "Bad Request: message to delete not found":
-				print(f"[{t}] HTTP 400, message not found, skip...")
-				current_message_id += 1
-				sleep(sleep_time)
-				continue
-			elif error_code == 400 and response["description"] == "Bad Request: message can't be deleted for everyone":
-				print(f"[{t}] HTTP 400, message found, but can't be deleted, skip...")
-				current_message_id += 1
-				sleep(sleep_time)
-				continue
-			print(f"[{t}] Unhandled error: {json.dumps(response, indent=1)}")
-			break
+					message = f"[{t}] HTTP 429, waiting for [{end_t}] ({retry_after} seconds)..."
+					wait = retry_after
+					handled = True
+				else:
+					message = f"[{t}] HTTP 429, break"
+			elif error_code == 400:
+				desc = response["description"]
+				if desc == "Bad Request: message to delete not found":
+					handled = True
+					message = f"[{t}] HTTP 400, message not found, skip..."
+				elif desc == "Bad Request: message can't be deleted for everyone":
+					handled = True
+					message = f"[{t}] HTTP 400, message found, but can't be deleted, skip..."
+				else:
+					message = None
+			
+			if not handled:
+				print(message or f"[{t}] Unhandled error: {json.dumps(response, indent=1)}")
+				break
 		
-		print(f"[{t}] Message has been deleted successfully")
+		print(message)
 		current_message_id += 1
-		sleep(sleep_time)
+		sleep(wait)
 
 
 if __name__ == "__main__":

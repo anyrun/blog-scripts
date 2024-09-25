@@ -24,7 +24,7 @@
 #		responses_directory - the location where server responses will be stored as separate JSON files; if directory doesn't exist, it will be created
 #		http_429_handling - strategy of "Too Many Requests" error handling, available values: wait, stop; default - wait
 
-import sys, requests, os, json
+import argparse, requests, os, json
 from time import sleep
 from datetime import datetime, timedelta
 
@@ -33,36 +33,31 @@ def make_request(token, message_id, dst, src):
 
 
 def main():
-	if len(sys.argv) < 4:
-		print("Usage:", sys.argv[0], "<telegram_bot_token> <dest_chat_id> <src_chat_id>\n\t[<start_message_id>=1] [<end_message_id>=-1] [<sleep_time_seconds>=3] [<responses_directory>=responses] [<http_429_handling>:{wait,stop}=wait]")
-		return
-
-	token = sys.argv[1]
-	if token.startswith("bot"):
-		token = token[3:]
+	parser = argparse.ArgumentParser(description="This script will forward messages one by one from one chat to another")
+	parser.add_argument("telegram_bot_token")
+	parser.add_argument("src_chat_id", help="ID of the chat, from which messages will be forwarded")
+	parser.add_argument("dest_chat_id", help="ID of the chat, to which messages will be forwarded")
+	parser.add_argument("--start_message_id", "--start", "-s", default=1, type=int, help="ID of first message to forward")
+	parser.add_argument("--end_message_id", "--end", "-e", default=-1, type=int, help="ID of last message to forward")
+	parser.add_argument("--sleep_time_seconds", "--sleep", "-t", default=3, type=float, help="delay between requests to Telegram API")
+	parser.add_argument("--responses_directory", "--responses", "-o", default="responses", help="the location where server responses will be stored as separate JSON files")
+	parser.add_argument("--http_429_handling", "--handle", default="wait", choices=["wait", "stop"], help="strategy of \"Too Many Requests\" error handling")
 	
-	dest_chat_id = sys.argv[2]
-	src_chat_id = sys.argv[3]
+	args = parser.parse_args()
 
-	other_settings = {
-		"start_message_id": 1,
-		"end_message_id": -1,
-		"sleep_time_seconds": 3,
-		"responses_directory": "responses",
-		"http_429_handling": "wait"
-	}
+	token = args.telegram_bot_token.removeprefix("bot")
+	src_chat_id = args.src_chat_id
+	dest_chat_id = args.dest_chat_id
+	current_message_id = args.start_message_id
+	end_message_id = args.end_message_id
+	responses_dir = args.responses_directory
+	sleep_time = args.sleep_time_seconds
+	http_429_handling = args.http_429_handling
 
-	if len(sys.argv) > 4:
-		other_settings.update(dict(zip(["start_message_id", "end_message_id", "sleep_time_seconds","responses_directory", "http_429_handling"], sys.argv[4:])))
-	
-	current_message_id = int(other_settings["start_message_id"])
-	end_message_id = int(other_settings["end_message_id"])
-	check_lambda = (lambda id: current_message_id <= end_message_id) if end_message_id != -1 else (lambda id: True)
-	responses_dir = os.path.abspath(other_settings["responses_directory"])
-	sleep_time = int(other_settings["sleep_time_seconds"])
-	http_429_handling = other_settings["http_429_handling"]
-	if not http_429_handling in ["wait", "stop"]:
-		http_429_handling = "stop"
+	if end_message_id != -1:
+		def check_id(id): return current_message_id <= end_message_id
+	else:
+		def check_id(id): return True
 
 
 	if not os.path.exists(responses_dir):
@@ -79,7 +74,7 @@ def main():
 	print(f"\tResponses directory: {responses_dir}")
 	print(f"\tHTTP 429 code handling: {http_429_handling}")
 
-	while check_lambda(current_message_id):
+	while check_id(current_message_id):
 		print()
 		t = datetime.now()
 		print(f"[{t}] Forwarding message with id [{current_message_id}]")

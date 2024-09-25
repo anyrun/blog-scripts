@@ -19,7 +19,7 @@
 #	5. Copy chat id to use it as dest_chat_id in forward_message(s).py
 
 
-import sys, requests, json
+import argparse, requests, json
 from time import sleep
 
 
@@ -52,13 +52,11 @@ def extract_chat_id(response):
 	return None
 
 def main():
-	if len(sys.argv) < 2:
-		print("Usage:", sys.argv[0], "<telegram_bot_token>")
-		return
+	parser = argparse.ArgumentParser()
+	parser.add_argument("telegram_bot_token")
 
-	token = sys.argv[1]
-	if token.startswith("bot"):
-		token = token[3:]
+	args = parser.parse_args()
+	token = args.telegram_bot_token.removeprefix("bot")
 	
 	bot_info = requests.get(f"https://api.telegram.org/bot{token}/getMe").json()["result"]
 	if not bot_info["can_join_groups"] and not ask_yn("Bot can't join groups, continue?"):
